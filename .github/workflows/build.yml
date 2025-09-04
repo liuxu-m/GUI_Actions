@@ -28,10 +28,12 @@ jobs:
 
     - name: Install macOS dependencies
       if: runner.os == 'macOS'
+      shell: bash
       run: brew install pkg-config libffi
       
     - name: Install Linux dependencies
       if: runner.os == 'Linux'
+      shell: bash
       run: |
         sudo apt-get update
         sudo apt-get install -y libgl1-mesa-dev libxkbcommon-x11-0
@@ -44,17 +46,24 @@ jobs:
     - name: Embed resources
       run: python embed_resources.py
 
+    # 平台无关的资源验证
     - name: Verify qt_plugins exists
       run: |
-        if [ ! -d "qt_plugins" ]; then
-          echo "ERROR: qt_plugins directory not found!"
+        echo "验证 qt_plugins 目录..."
+        if [ -d "qt_plugins" ]; then
+          echo "qt_plugins 目录存在"
+          echo "目录内容:"
+          ls -lR qt_plugins || echo "目录列表失败"
+        else
+          echo "错误: qt_plugins 目录不存在!"
           exit 1
         fi
-        echo "qt_plugins directory found:"
-        ls -lR qt_plugins
+      shell: bash
 
+    # macOS 构建
     - name: Build on macOS
       if: runner.os == 'macOS'
+      shell: bash
       run: |
         PROJECT_ROOT=$(pwd)
         pyinstaller --onedir --windowed \
@@ -65,18 +74,25 @@ jobs:
         mv dist/HiveToCKConverter.app dist/HiveToCKConverter
         echo "asset_name=HiveToCKConverter-macOS.app" >> $GITHUB_OUTPUT
 
+    # Windows 构建
     - name: Build on Windows
       if: runner.os == 'Windows'
       run: |
-        pyinstaller --onefile --windowed --name HiveToCKConverter --add-data "qt_plugins;qt_plugins" app.py
-        echo "asset_name=HiveToCKConverter-Windows.exe" >> $GITHUB_OUTPUT
+        $PROJECT_ROOT = Get-Location
+        pyinstaller --onefile --windowed --name HiveToCKConverter --add-data "$PROJECT_ROOT\qt_plugins;qt_plugins" app.py
+        echo "asset_name=HiveToCKConverter-Windows.exe" >> $env:GITHUB_OUTPUT
+      shell: powershell
 
+    # Linux 构建
     - name: Build on Linux
       if: runner.os == 'Linux'
+      shell: bash
       run: |
-        pyinstaller --onefile --name HiveToCKConverter --add-data "qt_plugins:qt_plugins" app.py
+        PROJECT_ROOT=$(pwd)
+        pyinstaller --onefile --name HiveToCKConverter --add-data "$PROJECT_ROOT/qt_plugins:qt_plugins" app.py
         echo "asset_name=HiveToCKConverter-Linux" >> $GITHUB_OUTPUT
 
+    # 工件上传
     - name: Upload macOS artifact
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v4
