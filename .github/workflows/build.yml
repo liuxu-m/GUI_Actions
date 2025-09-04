@@ -7,6 +7,10 @@ on:
     branches: [ master ]
   workflow_dispatch:
 
+# 添加权限设置
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -46,7 +50,6 @@ jobs:
     - name: Embed resources
       run: python embed_resources.py
 
-    # 平台无关的资源验证
     - name: Verify qt_plugins exists
       run: |
         echo "验证 qt_plugins 目录..."
@@ -72,16 +75,22 @@ jobs:
           --osx-bundle-identifier "com.example.HiveToCKConverter" \
           app.py
         mv dist/HiveToCKConverter.app dist/HiveToCKConverter
-        echo "asset_name=HiveToCKConverter-macOS.app" >> $GITHUB_OUTPUT
+        # 为发布准备 zip 包
+        cd dist
+        zip -r HiveToCKConverter-macOS.zip HiveToCKConverter.app
+        cd ..
+        echo "asset_name=HiveToCKConverter-macOS.zip" >> $GITHUB_OUTPUT
 
     # Windows 构建
     - name: Build on Windows
       if: runner.os == 'Windows'
+      shell: powershell
       run: |
         $PROJECT_ROOT = Get-Location
         pyinstaller --onefile --windowed --name HiveToCKConverter --add-data "$PROJECT_ROOT\qt_plugins;qt_plugins" app.py
-        echo "asset_name=HiveToCKConverter-Windows.exe" >> $env:GITHUB_OUTPUT
-      shell: powershell
+        # 为发布准备 zip 包
+        Compress-Archive -Path dist\HiveToCKConverter.exe -DestinationPath dist\HiveToCKConverter-Windows.zip
+        echo "asset_name=HiveToCKConverter-Windows.zip" >> $env:GITHUB_OUTPUT
 
     # Linux 构建
     - name: Build on Linux
@@ -90,29 +99,33 @@ jobs:
       run: |
         PROJECT_ROOT=$(pwd)
         pyinstaller --onefile --name HiveToCKConverter --add-data "$PROJECT_ROOT/qt_plugins:qt_plugins" app.py
-        echo "asset_name=HiveToCKConverter-Linux" >> $GITHUB_OUTPUT
+        # 为发布准备 zip 包
+        cd dist
+        zip HiveToCKConverter-Linux.zip HiveToCKConverter
+        cd ..
+        echo "asset_name=HiveToCKConverter-Linux.zip" >> $GITHUB_OUTPUT
 
     # 工件上传
     - name: Upload macOS artifact
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v4
       with:
-        name: HiveToCKConverter-macOS.app
-        path: dist/HiveToCKConverter.app
+        name: HiveToCKConverter-macOS
+        path: dist/HiveToCKConverter-macOS.zip
 
     - name: Upload Windows artifact
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
       with:
-        name: HiveToCKConverter-Windows.exe
-        path: dist/HiveToCKConverter.exe
+        name: HiveToCKConverter-Windows
+        path: dist/HiveToCKConverter-Windows.zip
 
     - name: Upload Linux artifact
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v4
       with:
         name: HiveToCKConverter-Linux
-        path: dist/HiveToCKConverter
+        path: dist/HiveToCKConverter-Linux.zip
 
   release:
     name: Create Release
@@ -125,6 +138,11 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: artifacts
+        pattern: 'HiveToCKConverter-*'
+
+    - name: List downloaded artifacts
+      run: ls -R artifacts
+      shell: bash
 
     - name: Create Release
       id: create_release
@@ -138,4 +156,6 @@ jobs:
           - macOS
           - Linux
         files: |
-          artifacts/*
+          artifacts/HiveToCKConverter-macOS/HiveToCKConverter-macOS.zip
+          artifacts/HiveToCKConverter-Windows/HiveToCKConverter-Windows.zip
+          artifacts/HiveToCKConverter-Linux/HiveToCKConverter-Linux.zip
