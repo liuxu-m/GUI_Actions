@@ -4,53 +4,56 @@ import re
 import json
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QTextEdit, QPushButton, QTabWidget, QMessageBox, QLineEdit)
-from PyQt5.QtCore import Qt
 import os
 import io
 import tempfile
 import atexit
 from PyQt5 import QtCore, QtWidgets
 import pkgutil
+import platform
 
-# 替换原有的单文件打包处理部分
+# 修改资源加载部分
 if getattr(sys, 'frozen', False):
     # 创建临时目录存放资源
     temp_dir = tempfile.mkdtemp()
     atexit.register(lambda: os.rmtree(temp_dir) if os.path.exists(temp_dir) else None)
 
     # 设置 Qt 插件路径
-    os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = os.path.join(temp_dir, 'platforms')
+    os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = os.path.join(temp_dir, 'plugins')
 
     # 创建插件目录
-    platforms_dir = os.path.join(temp_dir, 'platforms')
+    plugin_subdir = "platforms"
+    if platform.system() == "Darwin":
+        plugin_subdir = "platforms"
+
+    platforms_dir = os.path.join(temp_dir, plugin_subdir)
     os.makedirs(platforms_dir, exist_ok=True)
 
-    # 修改点1：使用 PyInstaller 的资源访问API
-    # 导入 PyInstaller 的 API
-    from PyInstaller.utils.hooks import get_package_paths
+    # 获取资源目录路径
+    if hasattr(sys, '_MEIPASS'):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.dirname(os.path.abspath(__file__))
 
-    # 获取 Qt 插件路径
-    try:
-        pyqt5_path = get_package_paths('PyQt5')[0]
-        qt_plugins_dir = os.path.join(pyqt5_path, 'Qt5', 'plugins')
+    # 复制平台插件
+    src_plugins_dir = os.path.join(base_path, 'qt_plugins', 'plugins', 'platforms')
 
-        # 复制平台插件
-        for plugin in ['qwindows.dll', 'qminimal.dll', 'qoffscreen.dll']:
-            src_path = os.path.join(qt_plugins_dir, 'platforms', plugin)
-            if os.path.exists(src_path):
-                shutil.copy2(src_path, platforms_dir)
-    except Exception as e:
-        print(f"警告: 无法自动复制 Qt 插件: {str(e)}")
-        # 回退方案：使用硬编码路径
-        try:
-            # 修改点2：使用绝对路径作为备选方案
-            default_qt_plugins = r"C:\Users\liuxu001\AppData\Local\Programs\Python\Python38\Lib\site-packages\PyQt5\Qt5\plugins"
-            for plugin in ['qwindows.dll', 'qminimal.dll', 'qoffscreen.dll']:
-                src_path = os.path.join(default_qt_plugins, 'platforms', plugin)
-                if os.path.exists(src_path):
-                    shutil.copy2(src_path, platforms_dir)
-        except:
-            QMessageBox.warning(None, "Qt 插件错误", "无法加载 Qt 平台插件，界面可能无法显示")
+    # 根据平台选择插件文件
+    if platform.system() == "Windows":
+        plugins = ['qwindows.dll']
+    elif platform.system() == "Darwin":
+        plugins = ['libqcocoa.dylib']
+    else:  # Linux
+        plugins = ['libqxcb.so']
+
+    for plugin in plugins:
+        src_path = os.path.join(src_plugins_dir, plugin)
+        if os.path.exists(src_path):
+            dest_path = os.path.join(platforms_dir, plugin)
+            shutil.copy2(src_path, dest_path)
+            print(f"已复制插件: {plugin} -> {dest_path}")
+        else:
+            print(f"警告: 插件不存在: {src_path}")
 class HiveToCKConverter(QMainWindow):
     def __init__(self):
         super().__init__()

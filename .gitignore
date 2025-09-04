@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build artifacts
+dist/
+build/
+*.spec
+
+# Resource files
+qt_plugins/
+resources.py
+
+# OS generated
+.DS_Store
+Thumbs.db
