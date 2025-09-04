@@ -74,7 +74,6 @@ jobs:
           --add-data "$PROJECT_ROOT/qt_plugins:qt_plugins" \
           --osx-bundle-identifier "com.example.HiveToCKConverter" \
           app.py
-        mv dist/HiveToCKConverter.app dist/HiveToCKConverter
         # 为发布准备 zip 包
         cd dist
         zip -r HiveToCKConverter-macOS.zip HiveToCKConverter.app
@@ -141,7 +140,9 @@ jobs:
         pattern: 'HiveToCKConverter-*'
 
     - name: List downloaded artifacts
-      run: ls -R artifacts
+      run: |
+        echo "下载的工件内容:"
+        ls -lR artifacts
       shell: bash
 
     - name: Create Release
@@ -157,5 +158,5 @@ jobs:
           - Linux
         files: |
           artifacts/HiveToCKConverter-macOS/HiveToCKConverter-macOS.zip
-          artifacts/HiveToCKConverter-Windows/HiveToCKConverter-Windows.zip
-          artifacts/HiveToCKConverter-Linux/HiveToCKConverter-Linux.zip
+          artifacts/HiveToCKConverter-windows/HiveToCKConverter-Windows.zip
+          artifacts/HiveToCKConverter-linux/HiveToCKConverter-Linux.zip
