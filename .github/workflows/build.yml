@@ -26,7 +26,6 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    # 系统依赖安装 - 使用平台特定脚本
     - name: Install macOS dependencies
       if: runner.os == 'macOS'
       run: brew install pkg-config libffi
@@ -42,13 +41,25 @@ jobs:
         python -m pip install --upgrade pip
         pip install PyQt5 pyinstaller
 
-    # 使用平台特定的构建命令
+    - name: Embed resources
+      run: python embed_resources.py
+
+    - name: Verify qt_plugins exists
+      run: |
+        if [ ! -d "qt_plugins" ]; then
+          echo "ERROR: qt_plugins directory not found!"
+          exit 1
+        fi
+        echo "qt_plugins directory found:"
+        ls -lR qt_plugins
+
     - name: Build on macOS
       if: runner.os == 'macOS'
       run: |
+        PROJECT_ROOT=$(pwd)
         pyinstaller --onedir --windowed \
           --name HiveToCKConverter \
-          --add-data "qt_plugins:qt_plugins" \
+          --add-data "$PROJECT_ROOT/qt_plugins:qt_plugins" \
           --osx-bundle-identifier "com.example.HiveToCKConverter" \
           app.py
         mv dist/HiveToCKConverter.app dist/HiveToCKConverter
@@ -66,7 +77,6 @@ jobs:
         pyinstaller --onefile --name HiveToCKConverter --add-data "qt_plugins:qt_plugins" app.py
         echo "asset_name=HiveToCKConverter-Linux" >> $GITHUB_OUTPUT
 
-    # 使用单独步骤上传所有工件
     - name: Upload macOS artifact
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v4
