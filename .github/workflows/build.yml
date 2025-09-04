@@ -26,62 +26,90 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install system dependencies
-      if: ${{ matrix.os != 'windows-latest' }}
+    # 系统依赖安装 - 使用平台特定脚本
+    - name: Install macOS dependencies
+      if: runner.os == 'macOS'
+      run: brew install pkg-config libffi
+      
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
       run: |
-        if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
-          brew install pkg-config libffi
-        elif [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-          sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-dev libxkbcommon-x11-0
-        fi
+        sudo apt-get update
+        sudo apt-get install -y libgl1-mesa-dev libxkbcommon-x11-0
 
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install PyQt5 pyinstaller
 
-    - name: Setup Qt environment
-      if: ${{ matrix.os == 'macos-latest' }}
-      shell: bash
+    # 使用平台特定的构建命令
+    - name: Build on macOS
+      if: runner.os == 'macOS'
       run: |
-        echo "QT_PLUGIN_PATH=$(python -c 'from PyQt5.QtCore import QLibraryInfo; import sys; print(QLibraryInfo.location(QLibraryInfo.PluginsPath) if hasattr(QLibraryInfo, "location") else QLibraryInfo.path(QLibraryInfo.PluginsPath))')" >> $GITHUB_ENV
+        pyinstaller --onedir --windowed \
+          --name HiveToCKConverter \
+          --add-data "qt_plugins:qt_plugins" \
+          --osx-bundle-identifier "com.example.HiveToCKConverter" \
+          app.py
+        mv dist/HiveToCKConverter.app dist/HiveToCKConverter
+        echo "asset_name=HiveToCKConverter-macOS.app" >> $GITHUB_OUTPUT
 
-    - name: Embed resources
-      run: python embed_resources.py
-
-    - name: Build executable
-      timeout-minutes: 20
+    - name: Build on Windows
+      if: runner.os == 'Windows'
       run: |
-        if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
-          pyinstaller --onedir --windowed \
-            --name HiveToCKConverter \
-            --add-data "qt_plugins:qt_plugins" \
-            --osx-bundle-identifier "com.example.HiveToCKConverter" \
-            app.py
-          mv dist/HiveToCKConverter.app dist/HiveToCKConverter
-        elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          pyinstaller --onefile --windowed --name HiveToCKConverter --add-data "qt_plugins;qt_plugins" app.py
-        else
-          pyinstaller --onefile --name HiveToCKConverter --add-data "qt_plugins:qt_plugins" app.py
-        fi
+        pyinstaller --onefile --windowed --name HiveToCKConverter --add-data "qt_plugins;qt_plugins" app.py
+        echo "asset_name=HiveToCKConverter-Windows.exe" >> $GITHUB_OUTPUT
 
-    - name: Create release asset name
-      id: asset-name
-      shell: bash
+    - name: Build on Linux
+      if: runner.os == 'Linux'
       run: |
-        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          echo "asset_name=HiveToCKConverter-Windows.exe" >> $GITHUB_OUTPUT
-        elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
-          echo "asset_name=HiveToCKConverter-macOS.app" >> $GITHUB_OUTPUT
-        else
-          echo "asset_name=HiveToCKConverter-Linux" >> $GITHUB_OUTPUT
-        fi
+        pyinstaller --onefile --name HiveToCKConverter --add-data "qt_plugins:qt_plugins" app.py
+        echo "asset_name=HiveToCKConverter-Linux" >> $GITHUB_OUTPUT
 
-    - name: Upload artifact
+    # 使用单独步骤上传所有工件
+    - name: Upload macOS artifact
+      if: runner.os == 'macOS'
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ steps.asset-name.outputs.asset_name }}
-        path: |
-          dist/HiveToCKConverter*
-          dist/*.app/**
+        name: HiveToCKConverter-macOS.app
+        path: dist/HiveToCKConverter.app
+
+    - name: Upload Windows artifact
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: HiveToCKConverter-Windows.exe
+        path: dist/HiveToCKConverter.exe
+
+    - name: Upload Linux artifact
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v4
+      with:
+        name: HiveToCKConverter-Linux
+        path: dist/HiveToCKConverter
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 30
+
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.run_id }}
+        name: Release v${{ github.run_id }}
+        body: |
+          Multi-platform build for:
+          - Windows
+          - macOS
+          - Linux
+        files: |
+          artifacts/*
