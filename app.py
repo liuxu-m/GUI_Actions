@@ -9,7 +9,6 @@ import io
 import tempfile
 import atexit
 from PyQt5 import QtCore, QtWidgets
-import pkgutil
 import platform
 
 # 修改资源加载部分
