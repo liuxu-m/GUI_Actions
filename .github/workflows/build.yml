@@ -41,6 +41,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install PyQt5 pyinstaller
 
+    - name: Setup Qt environment
+      run: |
+        if [ "${{ matrix.os }}" == "macos-latest" ]; then
+          echo "QT_PLUGIN_PATH=$(python -c 'from PyQt5.QtCore import QLibraryInfo; import sys; print(QLibraryInfo.location(QLibraryInfo.PluginsPath) if hasattr(QLibraryInfo, "location") else QLibraryInfo.path(QLibraryInfo.PluginsPath))')" >> $GITHUB_ENV
+        fi
+
     - name: Embed resources
       run: python embed_resources.py
 
