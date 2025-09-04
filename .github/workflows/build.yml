@@ -5,6 +5,7 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -14,6 +15,7 @@ jobs:
         python-version: ["3.11"]
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     steps:
     - name: Checkout code
@@ -43,11 +45,22 @@ jobs:
       run: python embed_resources.py
 
     - name: Build executable
+      timeout-minutes: 20
       run: |
-        if [ "${{ matrix.os }}" == "windows-latest" ]; then
+        if [ "${{ matrix.os }}" == "macos-latest" ]; then
+          # macOS 使用 onedir 模式
+          pyinstaller --onedir --windowed \
+            --name HiveToCKConverter \
+            --target-arch arm64 \
+            --add-data "qt_plugins:qt_plugins" \
+            --osx-bundle-identifier "com.example.HiveToCKConverter" \
+            app.py
+          
+          # 重命名输出目录
+          mv dist/HiveToCKConverter.app dist/HiveToCKConverter
+          
+        elif [ "${{ matrix.os }}" == "windows-latest" ]; then
           pyinstaller --onefile --windowed --name HiveToCKConverter --add-data "qt_plugins;qt_plugins" app.py
-        elif [ "${{ matrix.os }}" == "macos-latest" ]; then
-          pyinstaller --onefile --windowed --name HiveToCKConverter --add-data "qt_plugins:qt_plugins" app.py
         else
           pyinstaller --onefile --name HiveToCKConverter --add-data "qt_plugins:qt_plugins" app.py
         fi
@@ -58,25 +71,28 @@ jobs:
         if [ "${{ matrix.os }}" == "windows-latest" ]; then
           echo "asset_name=HiveToCKConverter-Windows.exe" >> $GITHUB_OUTPUT
         elif [ "${{ matrix.os }}" == "macos-latest" ]; then
-          echo "asset_name=HiveToCKConverter-macOS" >> $GITHUB_OUTPUT
+          echo "asset_name=HiveToCKConverter-macOS.app" >> $GITHUB_OUTPUT
         else
           echo "asset_name=HiveToCKConverter-Linux" >> $GITHUB_OUTPUT
         fi
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v4  # 修改为 v4
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.asset-name.outputs.asset_name }}
-        path: dist/HiveToCKConverter*
+        path: |
+          dist/HiveToCKConverter*
+          dist/*.app/**  # macOS 应用包
 
   release:
     name: Create Release
     runs-on: ubuntu-latest
     needs: build
+    timeout-minutes: 30
 
     steps:
     - name: Download artifacts
-      uses: actions/download-artifact@v4  # 建议同时更新下载动作
+      uses: actions/download-artifact@v4
       with:
         path: artifacts
 
