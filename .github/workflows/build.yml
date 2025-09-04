@@ -27,11 +27,11 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Install system dependencies
-      if: matrix.os != 'windows-latest'
+      if: ${{ matrix.os != 'windows-latest' }}
       run: |
-        if [ "${{ matrix.os }}" == "macos-latest" ]; then
+        if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
           brew install pkg-config libffi
-        elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+        elif [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
           sudo apt-get update
           sudo apt-get install -y libgl1-mesa-dev libxkbcommon-x11-0
         fi
@@ -42,10 +42,10 @@ jobs:
         pip install PyQt5 pyinstaller
 
     - name: Setup Qt environment
+      if: ${{ matrix.os == 'macos-latest' }}
+      shell: bash
       run: |
-        if [ "${{ matrix.os }}" == "macos-latest" ]; then
-          echo "QT_PLUGIN_PATH=$(python -c 'from PyQt5.QtCore import QLibraryInfo; import sys; print(QLibraryInfo.location(QLibraryInfo.PluginsPath) if hasattr(QLibraryInfo, "location") else QLibraryInfo.path(QLibraryInfo.PluginsPath))')" >> $GITHUB_ENV
-        fi
+        echo "QT_PLUGIN_PATH=$(python -c 'from PyQt5.QtCore import QLibraryInfo; import sys; print(QLibraryInfo.location(QLibraryInfo.PluginsPath) if hasattr(QLibraryInfo, "location") else QLibraryInfo.path(QLibraryInfo.PluginsPath))')" >> $GITHUB_ENV
 
     - name: Embed resources
       run: python embed_resources.py
@@ -53,19 +53,14 @@ jobs:
     - name: Build executable
       timeout-minutes: 20
       run: |
-        if [ "${{ matrix.os }}" == "macos-latest" ]; then
-          # macOS 使用 onedir 模式
+        if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
           pyinstaller --onedir --windowed \
             --name HiveToCKConverter \
-            --target-arch arm64 \
             --add-data "qt_plugins:qt_plugins" \
             --osx-bundle-identifier "com.example.HiveToCKConverter" \
             app.py
-          
-          # 重命名输出目录
           mv dist/HiveToCKConverter.app dist/HiveToCKConverter
-          
-        elif [ "${{ matrix.os }}" == "windows-latest" ]; then
+        elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
           pyinstaller --onefile --windowed --name HiveToCKConverter --add-data "qt_plugins;qt_plugins" app.py
         else
           pyinstaller --onefile --name HiveToCKConverter --add-data "qt_plugins:qt_plugins" app.py
@@ -73,10 +68,11 @@ jobs:
 
     - name: Create release asset name
       id: asset-name
+      shell: bash
       run: |
-        if [ "${{ matrix.os }}" == "windows-latest" ]; then
+        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
           echo "asset_name=HiveToCKConverter-Windows.exe" >> $GITHUB_OUTPUT
-        elif [ "${{ matrix.os }}" == "macos-latest" ]; then
+        elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
           echo "asset_name=HiveToCKConverter-macOS.app" >> $GITHUB_OUTPUT
         else
           echo "asset_name=HiveToCKConverter-Linux" >> $GITHUB_OUTPUT
@@ -88,30 +84,4 @@ jobs:
         name: ${{ steps.asset-name.outputs.asset_name }}
         path: |
           dist/HiveToCKConverter*
-          dist/*.app/**  # macOS 应用包
-
-  release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    needs: build
-    timeout-minutes: 30
-
-    steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts
-
-    - name: Create Release
-      id: create_release
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: v${{ github.run_id }}
-        name: Release v${{ github.run_id }}
-        body: |
-          Multi-platform build for:
-          - Windows
-          - macOS
-          - Linux
-        files: |
-          artifacts/*
+          dist/*.app/**
