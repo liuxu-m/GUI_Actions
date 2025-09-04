@@ -468,6 +468,7 @@ class HiveToCKConverter(QMainWindow):
                                 "encoding": "UTF-8",
                                 "nullFormat": "\\N",
                                 "column": reader_columns,
+                                "textReaderConfig": {},
                                 "hadoopConfig": {
                                     "dfs.nameservices": "hdfs-cluster",
                                     "dfs.ha.namenodes.hdfs-cluster": "nn1,nn2,nn3",
