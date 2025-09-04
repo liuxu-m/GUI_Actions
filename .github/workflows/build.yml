@@ -116,14 +116,14 @@ jobs:
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
       with:
-        name: HiveToCKConverter-Windows
+        name: HiveToCKConverter-Windows  # 确保使用大写 W
         path: dist/HiveToCKConverter-Windows.zip
 
     - name: Upload Linux artifact
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v4
       with:
-        name: HiveToCKConverter-Linux
+        name: HiveToCKConverter-Linux  # 确保使用大写 L
         path: dist/HiveToCKConverter-Linux.zip
 
   release:
@@ -142,7 +142,7 @@ jobs:
     - name: List downloaded artifacts
       run: |
         echo "下载的工件内容:"
-        ls -lR artifacts
+        find artifacts -type f -name "*.zip" | xargs ls -la
       shell: bash
 
     - name: Create Release
@@ -158,5 +158,5 @@ jobs:
           - Linux
         files: |
           artifacts/HiveToCKConverter-macOS/HiveToCKConverter-macOS.zip
-          artifacts/HiveToCKConverter-windows/HiveToCKConverter-Windows.zip
-          artifacts/HiveToCKConverter-linux/HiveToCKConverter-Linux.zip
+          artifacts/HiveToCKConverter-Windows/HiveToCKConverter-Windows.zip
+          artifacts/HiveToCKConverter-Linux/HiveToCKConverter-Linux.zip
