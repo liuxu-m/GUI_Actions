@@ -28,6 +28,9 @@ if getattr(sys, 'frozen', False):
     platforms_dir = os.path.join(temp_dir, plugin_subdir)
     os.makedirs(platforms_dir, exist_ok=True)
 
+
+
+
     # 获取资源目录路径
     if hasattr(sys, '_MEIPASS'):
         base_path = sys._MEIPASS
