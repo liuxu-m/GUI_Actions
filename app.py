@@ -189,9 +189,8 @@ class HiveToCKConverter(QMainWindow):
             else:
                 result['table_name'] = full_table_name
         # 提取列信息
-        columns_section = re.search(
-            r'\(((?:[^()]|\([^()]*\))*)\)\s*(?=PARTITIONED\s+BY|ROW\s+FORMAT|STORED\s+AS|LOCATION|TBLPROPERTIES|COMMENT|$)',
-            ddl_content, re.IGNORECASE)
+        pattern = r'\(\s*((?:[^()]|\(.*?\))*?)\s*\)\s*(?=PARTITIONED\s+BY|ROW\s+FORMAT|STORED\s+AS|LOCATION|TBLPROPERTIES|$)'
+        columns_section = re.search(pattern, ddl_content, re.IGNORECASE | re.DOTALL)
         if columns_section:
             columns_text = columns_section.group(1)
             # 匹配列定义
