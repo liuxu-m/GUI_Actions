@@ -489,7 +489,8 @@ class HiveToCKConverter(QMainWindow):
                                         "jdbcUrl": f"{self.ck_jdbc_input.text()}/{db_name}",
                                         "table": [table_name]
                                     }
-                                ]
+                                ],
+                                "preSql":  [ f"truncate table {db_name}.{table_name}" ],
                             }
                         }
                     }
