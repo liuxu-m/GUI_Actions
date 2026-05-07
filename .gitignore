@@ -16,3 +16,5 @@ resources.py
 # OS generated
 .DS_Store
 Thumbs.db
+.npm_cache/
+.idea/

@@ -2,6 +2,7 @@ import shutil
 import sys
 import re
 import json
+import xml.etree.ElementTree as ET
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QTextEdit, QPushButton, QTabWidget, QMessageBox, QLineEdit)
 import os
@@ -61,6 +62,8 @@ class HiveToCKConverter(QMainWindow):
         super().__init__()
         self.setWindowTitle("Hive 到 ClickHouse 转换工具")
         self.setGeometry(100, 100,1200, 1500)
+
+        self.datax_settings = self.load_datax_settings()
 
         # 创建主部件
         main_widget = QWidget()
@@ -132,19 +135,20 @@ class HiveToCKConverter(QMainWindow):
         # ClickHouse 配置
         ck_layout = QHBoxLayout()
         ck_layout.addWidget(QLabel("ClickHouse JDBC URL:"))
-        self.ck_jdbc_input = QLineEdit("jdbc:clickhouse://cc-2ze44up91s10912m1.ads.rds.aliyuncs.com:8123")
+        self.ck_jdbc_input = QLineEdit("")
         ck_layout.addWidget(self.ck_jdbc_input)
         config_layout.addLayout(ck_layout)
 
         # 用户名密码
         auth_layout = QHBoxLayout()
         auth_layout.addWidget(QLabel("ClickHouse 用户名:"))
-        self.ck_user_input = QLineEdit("data_ck_test")
+        self.ck_user_input = QLineEdit("")
         auth_layout.addWidget(self.ck_user_input)
         auth_layout.addWidget(QLabel("密码:"))
-        self.ck_password_input = QLineEdit("NyT2T0XXuGjyaaapvOg7QNZiQdaCnnzRpKlosTMhL+R+Sa+71vvW85si2G9ygeuMpVhZSuD8T+jHhE+d3vXbuhkqYQ8DeyYVREmYPBTBreE2yI9ze2jNW9B+I6BEvYRqupjK0rWopxi52l5mUO6rIF9uIEzptKL4KdcYgtyKtmo=")
+        self.ck_password_input = QLineEdit("")
         self.ck_password_input.setEchoMode(QLineEdit.Password)
         auth_layout.addWidget(self.ck_password_input)
+        self.apply_datax_settings()
         config_layout.addLayout(auth_layout)
         layout.addLayout(config_layout)
         # 生成按钮
@@ -160,6 +164,32 @@ class HiveToCKConverter(QMainWindow):
         self.datax_output.setMinimumHeight(300)
         output_layout.addWidget(self.datax_output)
         layout.addLayout(output_layout)
+
+    def get_settings_directory(self):
+        if getattr(sys, 'frozen', False):
+            return os.path.dirname(sys.executable)
+        return os.path.dirname(os.path.abspath(__file__))
+
+    def load_datax_settings(self):
+        settings_path = os.path.join(self.get_settings_directory(), 'datax_settings.xml')
+        if not os.path.exists(settings_path):
+            return {}
+
+        root = ET.parse(settings_path).getroot()
+        clickhouse = root.find('clickhouse')
+        if clickhouse is None:
+            return {}
+
+        return {
+            'url': (clickhouse.findtext('url') or '').strip(),
+            'username': (clickhouse.findtext('username') or '').strip(),
+            'password': (clickhouse.findtext('password') or '').strip(),
+        }
+
+    def apply_datax_settings(self):
+        self.ck_jdbc_input.setText(self.datax_settings.get('url', ''))
+        self.ck_user_input.setText(self.datax_settings.get('username', ''))
+        self.ck_password_input.setText(self.datax_settings.get('password', ''))
 
     def parse_hive_ddl(self, ddl_content: str) -> dict:
         """解析 Hive DDL 语句"""
