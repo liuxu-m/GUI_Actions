@@ -18,3 +18,4 @@ resources.py
 Thumbs.db
 .npm_cache/
 .idea/
+.idea/workspace.xml

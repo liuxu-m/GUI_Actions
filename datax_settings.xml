@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <settings>
     <clickhouse>
-        <url>jdbc:clickhouse://data-domestic.clickhouseserver.rds.aliyuncs.com:8123</url>
-        <username>bigdata_ck_ds_ops_app_ops</username>
-        <password>ZFbqzHlXPo7c1XesJ4fIqm5gda+Y3a/vutOfSEScRUqK+doLuCQslvxQq8+g70etwpnit/ZKL/MKl+jqnJfKboby7Camy5faelN4rOVVd7T/0Cw81lWUMcr+BnfQTeOOYqBFTthPUoocvv9EVWf1BYR1MjBEbD5GKQ59IK7Shy0=</password>
+        <url>jdbc:clickhouse://your-clickhouse-host:8123</url>
+        <username>your_username</username>
+        <password>your_password</password>
     </clickhouse>
 </settings>
